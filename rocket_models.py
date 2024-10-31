@@ -2,11 +2,28 @@ import numpy as np
 
 gamma = 1.4 #TODO: Verify correct adiabatic index for air over range
 
+class OrbitingSatellite:
+    def __init__(self):
+        self.mass_satellite = 100           #kg
+
+    def getMass(self):
+        return(self.mass_satellite)
+    
+    def getDragCoefficient(self,air_speed, density, pressure):
+        return(0.0)
+    
+    def getGravityCenter(self):
+        return(0.0)
+    
 class LiquidRocket:
     def __init_(self):
         #TODO: params
-        self.gimbalAngleMax = 4.5 # deg
-
+        self.gimbalAngleMax = 4.5           # deg
+        self.mass_satellite = 100           # kg
+        self.mass_booster = 0.0             # kg
+        self.mass_booster_fuel = 0.0        # kg
+        self.mass_second_stage = 0.0        # kg
+        self.mass_second_stage_fuel = 0.0   # kg
         # Center of lift and dimensions source:
 
     def getDragCoefficient(self,air_speed,density,pressure):
@@ -39,12 +56,11 @@ class LiquidRocket:
             Cd = -0.01408*M**3 + 0.19168*M**2 - 0.86976*M + 1.53544
         else:
             Cd = 0.22
-        
-        if density == 0:
-            Cd = 0
-    
 
         return Cd
+    
+    def getGravityCenter(self):
+        return(0.0)
 
     def getThrustVector(self):
         #TODO: Thrust Vectoring Functions
