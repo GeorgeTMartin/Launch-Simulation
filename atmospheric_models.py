@@ -7,6 +7,7 @@ e = 2.718281828459
 import numpy as np
 import bisect
 
+# Standard Atmosphere Source: https://en.wikipedia.org/wiki/U.S._Standard_Atmosphere
 class US_Standard_Atmosphere:
     def __init__(self):
         altitudes_from_sea_level = np.array([0,11000,20000,32000,47000,51000,71000,84852])
@@ -35,4 +36,7 @@ class US_Standard_Atmosphere:
             pressure = 0.0
             temperature = self.temperatures_K[-1]
 
-        return pressure, temperature
+        #Density (Ideal) Gas Law Source: https://en.wikipedia.org/wiki/Density_of_air
+        density = pressure*M/(R*temperature)
+
+        return pressure, temperature, density

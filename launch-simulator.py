@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import atmospheric_models
+import rocket_models
 
 G = 6.67430*10**-11# Earth Parameters - Point Mass Model
 r_earth = 6378137 #meters
@@ -20,11 +21,15 @@ x_plot = []
 y_plot = []
 z_plot = []
 dt = 0.1 # seconds
+
+#Determine Orbital Period
 mu = np.linalg.norm(velocity)**2*np.linalg.norm(coords)
 semimajor_axis =(2/np.linalg.norm(coords)-np.linalg.norm(velocity)**2/(G*m_earth))**-1
 orbital_period = 2*np.pi*np.sqrt(semimajor_axis**3/(G*m_earth))
+
+#Establish Models
 atmospheric_model = atmospheric_models.US_Standard_Atmosphere()
-pressure_out = []
+rocket_model = rocket_models.LiquidRocket()
 
 for i in np.linspace(0,orbital_period,int(orbital_period/dt)):
     dist = np.linalg.norm(coords)
@@ -32,7 +37,13 @@ for i in np.linspace(0,orbital_period,int(orbital_period/dt)):
         print('Rocket has landed rapidly (crashed)')
         break
 
-    [pressure,temperature] = atmospheric_model.get_params(dist)
+    [pressure,temperature, density] = atmospheric_model.get_params(dist)
+
+    # Determine Drag Coefficient
+   
+    air_relative_speed = 0.0
+    air_speed = 0.0
+    Cd = rocket_model.getDragCoefficient(air_speed,density,pressure)
 
     F_gravity = G*m_earth*m_satellite/(dist**2)
     gravity_vector = np.negative(coords)/dist
@@ -62,4 +73,7 @@ x_earth = r_earth*np.cos(u)*np.sin(v)
 y_earth = r_earth*np.sin(u)*np.sin(v)
 z_earth = r_earth*np.cos(v)
 ax.plot_surface(x_earth, y_earth, z_earth, color="b",alpha=0.25)
+ax.set_xlabel('X [m]')
+ax.set_ylabel('Y [m]')
+ax.set_zlabel('Z [m]')
 plt.show()
