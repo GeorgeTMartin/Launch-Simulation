@@ -4,27 +4,51 @@ gamma = 1.4 #TODO: Verify correct adiabatic index for air over range
 
 class OrbitingSatellite:
     def __init__(self):
-        self.mass_satellite = 100           #kg
+        self.mass_satellite = 100           # kg
+        self.satellite_length = 0.25        # m
+        self.satellite_width = 0.25         # m
+        self.satellite_height = 0.25        # m
 
     def getMass(self):
-        return(self.mass_satellite)
+        return self.mass_satellite
     
-    def getDragCoefficient(self,air_speed, density, pressure):
-        return(0.0)
+    def getDragCoefficient(self, air_speed, density, pressure):
+        return 0.0
     
     def getGravityCenter(self):
-        return(0.0)
+        return 0.0
     
-class LiquidRocket:
-    def __init_(self):
+    def getMOIs(self):
+        Ixx = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_height**2 )
+        Iyy = 1/12*self.mass_satellite*(self.satellite_height**2 + self.satellite_width**2 )
+        Izz = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_width**2 )
+        return Ixx, Iyy, Izz
+    
+    def getThrustVector(self, twist):
+        return 0.0, [0.0,0.0,0.0], 0.0
+    
+    def getCenterofPressure(self):
+        return 0.0
+    
+class FalconIX:
+    def __init__(self):
         #TODO: params
-        self.gimbalAngleMax = 4.5           # deg
-        self.mass_satellite = 100           # kg
-        self.mass_booster = 0.0             # kg
-        self.mass_booster_fuel = 0.0        # kg
-        self.mass_second_stage = 0.0        # kg
-        self.mass_second_stage_fuel = 0.0   # kg
-        # Center of lift and dimensions source:
+        self.gimbalAngleMax = 5.0*np.pi/180                                 # rad
+        self.mass_satellite = 100.0                                         # kg
+        self.stage_one_fuselage_mass = 25600.0-470.0                        # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
+        stage_one_liquid_mass = 92670.0                                     # kg
+        self.stage_one_fuel_mass = stage_one_liquid_mass*2.6/3.6            # kg
+        self.stage_one_oxidizer_mass = stage_one_liquid_mass*1.0/3.6        # kg
+        self.stage_one_motor_mass = 470.0                                   # kg - Merlin 1D - https://en.wikipedia.org/wiki/SpaceX_Merlin
+        self.stage_two_fuselage_mass = 2900.0 - 470.0                       # kg
+        stage_two_liquid_mass = 395700+19600                                # kg
+        self.stage_two_fuel_mass = stage_two_liquid_mass*2.6/3.6            # kg
+        self.stage_two_oxidizer_mass = stage_two_liquid_mass*1.0/3.6        # kg
+        self.stage_two_motor_mass = 470.0                                   # kg
+
+        # Center of pressure and dimensions source:
+
+        self.stage_flag = 1
 
     def getDragCoefficient(self,air_speed,density,pressure):
         #ideal gas - source https://en.wikipedia.org/wiki/Speed_of_sound
@@ -60,8 +84,33 @@ class LiquidRocket:
         return Cd
     
     def getGravityCenter(self):
-        return(0.0)
+        # Considered relative to payload Cg
+        # Cg is on centerline of rocket
 
-    def getThrustVector(self):
+        if self.stage_flag == 1:
+            Cg = 0.0
+        if self.stage_flag == 2:
+            Cg = 0.0
+        else:
+            Cg = 0.0
+
+        return Cg
+    
+    def getMOIs(self):
+        Ixx = 1.0
+        Iyy = 1.0
+        Izz = 1.0
+
+        return Ixx, Iyy, Izz
+
+    def getThrustVector(self, twist):
         #TODO: Thrust Vectoring Functions
-        return None
+        return 0.0, [0.0,0.0,0.0], 0.0
+    
+    def getCenterofPressure(self):
+        if self.stage_flag == 1:
+            return 0.0
+        elif self.stage_flag == 2:
+            return 0.0
+        else:
+            return 0.0
