@@ -2,7 +2,7 @@ r_earth = 6378137 #m
 G = 6.67430*10**-11# Earth Parameters - Point Mass Model
 g0 = 9.80665  # m/s^2
 M = 0.0289644 # kg/mol
-R = 8.9494596*10**-4
+R = 8.3144598 # J/molK
 e = 2.718281828459
 import numpy as np
 import bisect
