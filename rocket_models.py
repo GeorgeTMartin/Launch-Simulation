@@ -1,6 +1,7 @@
 import numpy as np
+import general_functions
 
-gamma = 1.4 #TODO: Verify correct adiabatic index for air over range
+gamma = 1.4
 
 class OrbitingSatellite:
     def __init__(self):
@@ -33,7 +34,6 @@ class OrbitingSatellite:
     
 class FalconIX:
     def __init__(self):
-        #TODO: params
         self.gimbalAngleMax = 5.0*np.pi/180                                 # rad
         self.mass_satellite = 100.0                                         # kg
         self.stage_one_fuselage_mass = 25600.0-470.0*9                      # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
@@ -132,7 +132,6 @@ class FalconIX:
         return Ixx, Iyy, Izz
 
     def getThrustVector(self, twist, air_pressure):
-        #TODO: Thrust Vectoring Functions
         # Thrust Calcs - https://space.stackexchange.com/questions/46521/falcon-9-merlin-1d-thrust-calculated-through-every-moment-of-flight
         if self.stage_flag == 1:
             F_thrust = self.stage_one_fuel_consumption_rate*self.stage_one_exit_velocity+(self.stage_one_exit_pressure-air_pressure)*self.stage_one_exit_area
@@ -156,8 +155,10 @@ class FalconIX:
             F_thrust = 0.0
             motor_distance = 0.0
 
+        # neutral_steer_angle = general_functions.inverseCoordinateTransform([1,0,0],twist)
         # TODO: Develop Gimbal Control Method and Control Law (also Trajectories)
-        return F_thrust, [1.0, 0.0, 0.0], motor_distance
+        neutral_steer_angle = [1,0,0]
+        return F_thrust, neutral_steer_angle, motor_distance
     
     def getCenterofPressure(self):
         if self.stage_flag == 1:
@@ -168,4 +169,9 @@ class FalconIX:
             return 0.0
         
     def getMass(self):
-        return self.total_mass
+        mass = self.mass_satellite
+        if self.stage_flag in [1,2]:
+            mass += self.stage_two_motor_mass + self.stage_two_fuselage_mass + self.stage_two_oxidizer_mass + self.stage_two_fuel_mass
+        if self.stage_flag == 1:
+            mass += self.mass_satellite + self.stage_one_motor_mass + self.stage_one_fuselage_mass + self.stage_one_oxidizer_mass + self.stage_one_fuel_mass
+        return mass
