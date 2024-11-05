@@ -27,14 +27,20 @@ def angleRates_BodytoEuler(x, twist):
     # https://liqul.github.io/blog/assets/rotation.pdf
     theta = twist[0]
     phi = twist[1]
-    body_rate_to_euler_rate_matrix = [[1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
-                                      [0, np.cos(phi), -np.sin(phi)],
-                                      [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)]]
-    euler_angle_rates = np.matmul(body_rate_to_euler_rate_matrix,x)
+    # body_rate_to_euler_rate_matrix = [[1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
+    #                                   [0, np.cos(phi), -np.sin(phi)],
+    #                                   [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)]]
+    # euler_angle_rates = np.matmul(body_rate_to_euler_rate_matrix,x)
 
-    # body_rate_to_euler_rate_matrix = [[0,np.sin(phi),np.cos(phi)],
-    #                            [0, np.cos(phi)*np.cos(theta), -np.sin(phi)*np.cos(theta)],
-    #                            [np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)*np.sin(theta)]]
-    # euler_angle_rates = np.matmul(body_rate_to_euler_rate_matrix,x)/np.cos(theta)
+    # test_matrix = [[1,0,-np.sin(theta)],
+    #                [0, np.cos(phi), np.sin(phi)*np.cos(theta)],
+    #                [0, -np.sin(phi), np.cos(phi)*np.cos(theta)]]
+    # test_inversion_matrix = np.linalg.inv(test_matrix)
+    # euler_angle_rates = np.matmul(test_inversion_matrix, x)
+
+    body_rate_to_euler_rate_matrix = [[0,np.sin(phi),np.cos(phi)],
+                               [0, np.cos(phi)*np.cos(theta), -np.sin(phi)*np.cos(theta)],
+                               [np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)*np.sin(theta)]]
+    euler_angle_rates = np.matmul(body_rate_to_euler_rate_matrix,x)/np.cos(theta)
 
     return euler_angle_rates

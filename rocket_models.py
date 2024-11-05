@@ -26,7 +26,7 @@ class OrbitingSatellite:
         Izz = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_width**2 )
         return Ixx, Iyy, Izz
     
-    def getThrustVector(self, twist, pressure):
+    def getThrustVector(self, pressure):
         return 0.0, [0.0,0.0,0.0], 0.0
     
     def getCenterofPressure(self):
@@ -36,6 +36,10 @@ class FalconIX:
     def __init__(self):
         self.gimbalAngleMax = 5.0*np.pi/180                                 # rad
         self.mass_satellite = 100.0                                         # kg
+        self.satellite_length = 0.25                                        # m
+        self.satellite_width = 0.25                                         # m
+        self.satellite_height = 0.25                                        # m
+
         self.stage_one_fuselage_mass = 25600.0-470.0*9                      # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
         stage_one_liquid_mass = 92670.0                                     # kg
         self.stage_one_fuel_mass = stage_one_liquid_mass*2.6/3.6            # kg
@@ -59,23 +63,32 @@ class FalconIX:
 
         # Dimensional References: https://www.researchgate.net/figure/Falcon-9-launch-vehicle-dimensions-and-mass-breakdown_fig1_363319640
         reference_dimension = 58.0                                          # m
-        merlin_length = 2.92                                                # m https://en.wikipedia.org/wiki/SpaceX_Merlin
+        self.merlin_length = 2.92                                                # m https://en.wikipedia.org/wiki/SpaceX_Merlin
         self.stage_one_motor_distance = reference_dimension - 0.0           # m
         self.stage_one_oxidizer_max_distance = reference_dimension - 0.384  # m
-        self.stage_one_fuel_max_distance = reference_dimension - 17.8       # m
-        self.stage_two_motor_distance = reference_dimension - 47.5 + merlin_length  # m
-        self.stage_two_oxidizer_max_distance = reference_dimension - 47.5   # m
-        self.stage_two_fuel_max_distance = reference_dimension - 51.0       # m
+        self.stage_one_oxidizer_min_distance = reference_dimension - 17.8   # m
+        self.stage_one_fuel_max_distance = reference_dimension - 40.67      # m
+        self.stage_one_fuel_min_distance = reference_dimension - 17.8       # m
+        self.stage_one_fuselage_max_distance = reference_dimension - 47.5   # m
+        self.stage_one_fuselage_min_distance = reference_dimension - 56.6   # m
 
-        self.cross_section_area = np.pi*5.2**2                              #m^2
-        self.rocket_outer_diameter = 3.65                                   # m
+        self.stage_two_motor_distance = reference_dimension - 47.5 + self.merlin_length  # m [motor distance of both stages is considerd the final exit region of the cone, not throat TODO: account for this in moment calculations]
+        self.stage_two_oxidizer_max_distance = reference_dimension - 47.5   # m
+        self.stage_two_oxidizer_min_distance = reference_dimension - 51.0   # m
+        self.stage_two_fuel_max_distance = reference_dimension - 51.0       # m
+        self.stage_two_fuel_min_distance = reference_dimension - 56.6       # m
+        self.stage_two_fuselage_max_distance = reference_dimension - 0.384  # m
+        self.stage_two_fuselage_min_distance = reference_dimension - 47.5   # m
+
+        self.cross_section_area = np.pi*5.2**2                              # m^2
+        self.rocket_outer_radius = 3.65/2                                   # m
         stage_one_mass = self.stage_one_fuselage_mass+stage_one_liquid_mass+self.stage_one_motor_mass
         stage_two_mass = self.stage_two_fuselage_mass+stage_two_liquid_mass+self.stage_two_motor_mass
         self.total_mass = self.mass_satellite+stage_one_mass+stage_two_mass
 
         # Assumption - fuselage mass is uniform cylinder of outer shell radius as listed, 
         aluminum_lithium_alloy_density = 2700.0                             # kg/m^3 - https://www.wixsteel.com/products/aluminum-alloy/2000-series-aluminum-alloy/2198
-        self.inner_radius = np.sqrt(self.rocket_outer_diameter**2 - (self.stage_one_fuselage_mass+self.stage_two_fuselage_mass)/(aluminum_lithium_alloy_density*reference_dimension*np.pi))
+        self.inner_radius = np.sqrt(self.rocket_outer_radius**2 - (self.stage_one_fuselage_mass+self.stage_two_fuselage_mass)/(aluminum_lithium_alloy_density*reference_dimension*np.pi))
         self.stage_flag = 1
 
     def getDragCoefficient(self,air_speed,density,pressure):
@@ -114,24 +127,74 @@ class FalconIX:
     def getGravityCenter(self):
         # Considered relative to payload Cg
         # Cg is on centerline of rocket
-
+        Cg_num = 0.0
+        Cg_den = self.mass_satellite
+        if self.stage_flag in [1,2]:
+            # Add Stage Two masses, relative distances
+            Cg_num += self.stage_two_motor_mass * (self.stage_two_oxidizer_mass+self.merlin_length/2) + self.stage_two_oxidizer_mass * (self.stage_two_oxidizer_max_distance+self.stage_two_oxidizer_min_distance)/2 + self.stage_two_fuel_mass * (self.stage_two_fuel_max_distance+self.stage_two_fuel_min_distance)/2 + self.stage_two_fuselage_mass * (self.stage_two_fuselage_max_distance+self.stage_two_fuselage_min_distance)/2
+            # Add Stage Two masses
+            Cg_den += self.stage_two_motor_mass + self.stage_two_oxidizer_mass + self.stage_two_fuel_mass + self.stage_two_fuselage_mass
         if self.stage_flag == 1:
-            Cg = 0.0
-        if self.stage_flag == 2:
-            Cg = 0.0
-        else:
-            Cg = 0.0
+            # Add Stage One masses, relative distances
+            Cg_num += self.stage_one_motor_mass * (self.stage_one_oxidizer_mass+self.merlin_length/2) + self.stage_one_oxidizer_mass * (self.stage_one_oxidizer_max_distance+self.stage_one_oxidizer_min_distance)/2 + self.stage_one_fuel_mass * (self.stage_one_fuel_max_distance+self.stage_one_fuel_min_distance)/2 + self.stage_one_fuselage_mass * (self.stage_one_fuselage_max_distance+self.stage_one_fuselage_min_distance)/2
+            # Add Stage One masses
+            Cg_den += self.stage_one_motor_mass + self.stage_one_oxidizer_mass + self.stage_one_fuel_mass + self.stage_one_fuselage_mass
+
+        Cg = Cg_num/Cg_den
 
         return Cg
     
     def getMOIs(self):
-        Ixx = 2945907.90    #stolen from Saturn V - only inital conditions
-        Iyy = 892137606
-        Izz = 892137606
+        # Parallel Axis Theorem: I = I_c + m*d^2
+        # Ixx = 2945907.90    #stolen from Saturn V - only inital conditions
+        # Iyy = 892137606
+        # Izz = 892137606
+        Ixx = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_height**2 )
+        Iyy = 1/12*self.mass_satellite*(self.satellite_height**2 + self.satellite_width**2 )
+        Izz = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_width**2 )
+        if self.stage_flag in [1,2]:
+            # Add stage 2 fuselage, stage 2 motors, stage 2 fuel, stage 2 liquid oxygen
+            stage_two_fuselage_Ixx = .5*self.stage_two_fuselage_mass*(self.rocket_outer_radius**2+self.inner_radius**2)
+            stage_two_motor_Ixx = 0.5*self.stage_two_motor_mass*(0.25**2) # assume solid cylinder equivalent with 0.25 m radius for motor
+            stage_two_fuel_Ixx = 0.5*self.stage_two_fuel_mass*(self.inner_radius**2) 
+            stage_two_lox_Ixx = 0.5*self.stage_two_oxidizer_mass*(self.inner_radius**2) 
+            Ixx += stage_two_fuselage_Ixx + stage_two_motor_Ixx +stage_two_fuel_Ixx + stage_two_lox_Ixx
+
+            stage_two_fuselage_Iyy = (self.stage_two_fuselage_mass/12)*(3*(self.rocket_outer_radius**2+self.inner_radius**2) + (0.5*(self.stage_two_fuselage_max_distance-self.stage_two_fuselage_min_distance)**2)) + self.stage_two_fuselage_mass*(0.5*self.stage_two_fuselage_max_distance+self.stage_two_fuselage_min_distance)**2
+            stage_two_motor_Iyy = 0.25*self.stage_two_motor_mass*0.25**2 + (1/12)*self.stage_two_motor_mass*(0.5*self.merlin_length**2) + self.stage_two_motor_mass * (self.stage_two_oxidizer_max_distance+self.merlin_length/2)**2 # assume solid cylinder equivalent with 0.25 m radius for motor
+            stage_two_fuel_Iyy = 0.25*self.stage_two_fuel_mass*self.inner_radius**2 + (1/12)*self.stage_two_fuel_mass*(0.5*(self.stage_two_fuel_max_distance-self.stage_two_fuel_min_distance))**2 + self.stage_two_fuel_mass * (0.5*(self.stage_two_fuel_max_distance+self.stage_two_fuel_min_distance))**2
+            stage_two_lox_Iyy = 0.25*self.stage_two_oxidizer_mass*self.inner_radius**2 + (1/12)*self.stage_two_oxidizer_mass*(0.5*(self.stage_two_oxidizer_max_distance-self.stage_two_oxidizer_min_distance))**2 + self.stage_two_oxidizer_mass * (0.5*(self.stage_two_oxidizer_max_distance+self.stage_two_oxidizer_min_distance))**2
+            Iyy += stage_two_fuselage_Iyy + stage_two_motor_Iyy + stage_two_fuel_Iyy + stage_two_lox_Iyy
+            
+            stage_two_fuselage_Izz = stage_two_fuselage_Iyy
+            stage_two_motor_Izz = stage_two_motor_Iyy
+            stage_two_fuel_Izz = stage_two_fuel_Iyy
+            stage_two_lox_Izz = stage_two_lox_Iyy
+            Izz += stage_two_fuselage_Izz + stage_two_motor_Izz + stage_two_fuel_Izz + stage_two_lox_Izz
+
+        if self.stage_flag == 1:
+            # Add stage 1 fuselage, stage 1 motors, stage 1 fuel, stage 1 liquid oxygen
+            stage_one_fuselage_Ixx = .5*self.stage_one_fuselage_mass*(self.rocket_outer_radius**2+self.inner_radius**2)
+            stage_one_motor_Ixx = 0.5*self.stage_one_motor_mass*(0.75**2) # assume solid cylinder equivalent with 0.75 m radius for motor
+            stage_one_fuel_Ixx = 0.5*self.stage_one_fuel_mass*(self.inner_radius**2) 
+            stage_one_lox_Ixx = 0.5*self.stage_one_oxidizer_mass*(self.inner_radius**2) 
+            Ixx += stage_one_fuselage_Ixx + stage_one_motor_Ixx +stage_one_fuel_Ixx + stage_one_lox_Ixx
+
+            stage_one_fuselage_Iyy = (self.stage_one_fuselage_mass/12)*(3*(self.rocket_outer_radius**2+self.inner_radius**2) + (0.5*(self.stage_one_fuselage_max_distance-self.stage_one_fuselage_min_distance)**2)) + self.stage_one_fuselage_mass*(0.5*self.stage_one_fuselage_max_distance+self.stage_one_fuselage_min_distance)**2
+            stage_one_motor_Iyy = 0.25*self.stage_one_motor_mass*0.25**2 + (1/12)*self.stage_one_motor_mass*(0.5*self.merlin_length**2) + self.stage_one_motor_mass * (self.stage_one_oxidizer_max_distance+self.merlin_length/2)**2 # assume solid cylinder equivalent with 0.25 m radius for motor
+            stage_one_fuel_Iyy = 0.25*self.stage_one_fuel_mass*self.inner_radius**2 + (1/12)*self.stage_one_fuel_mass*(0.5*(self.stage_one_fuel_max_distance-self.stage_one_fuel_min_distance))**2 + self.stage_one_fuel_mass * (0.5*(self.stage_one_fuel_max_distance+self.stage_one_fuel_min_distance))**2
+            stage_one_lox_Iyy = 0.25*self.stage_one_oxidizer_mass*self.inner_radius**2 + (1/12)*self.stage_one_oxidizer_mass*(0.5*(self.stage_one_oxidizer_max_distance-self.stage_one_oxidizer_min_distance))**2 + self.stage_one_oxidizer_mass * (0.5*(self.stage_one_oxidizer_max_distance+self.stage_one_oxidizer_min_distance))**2
+            Iyy += stage_one_fuselage_Iyy + stage_one_motor_Iyy + stage_one_fuel_Iyy + stage_one_lox_Iyy
+            
+            stage_one_fuselage_Izz = stage_one_fuselage_Iyy
+            stage_one_motor_Izz = stage_one_motor_Iyy
+            stage_one_fuel_Izz = stage_one_fuel_Iyy
+            stage_one_lox_Izz = stage_one_lox_Iyy
+            Izz += stage_one_fuselage_Izz + stage_one_motor_Izz + stage_one_fuel_Izz + stage_one_lox_Izz
 
         return Ixx, Iyy, Izz
 
-    def getThrustVector(self, twist, air_pressure):
+    def getThrustVector(self, air_pressure):
         # Thrust Calcs - https://space.stackexchange.com/questions/46521/falcon-9-merlin-1d-thrust-calculated-through-every-moment-of-flight
         if self.stage_flag == 1:
             F_thrust = self.stage_one_fuel_consumption_rate*self.stage_one_exit_velocity+(self.stage_one_exit_pressure-air_pressure)*self.stage_one_exit_area
@@ -142,7 +205,7 @@ class FalconIX:
             if self.stage_one_fuel_mass <= 0: # There is a slight amount of error here equal to the negative magnitude of fuel used TODO: incorporate stage separation properly
                 self.stage_flag = 2
         
-
+        # TODO: alter fuel mass distributions over duration of flight. Current model assumes homogonous density within tank
         elif self.stage_flag == 2:
             F_thrust = self.stage_two_fuel_consumption_rate*self.stage_two_exit_velocity+(self.stage_two_exit_pressure-air_pressure)*self.stage_two_exit_area
             self.stage_two_fuel_mass -= self.stage_two_fuel_consumption_rate*2.66/3.66
@@ -150,6 +213,8 @@ class FalconIX:
             motor_distance = self.stage_two_motor_distance
             if self.stage_two_fuel_mass < 0:
                 self.stage_flag = 3
+                F_thrust = 0.0
+                motor_distance = 0.0
         
         else:
             F_thrust = 0.0

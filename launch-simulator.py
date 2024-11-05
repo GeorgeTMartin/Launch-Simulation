@@ -14,7 +14,7 @@ import general_functions
 # 7. Ground effect is not considered
 # 8. Lift force is negligible (C_l = 0.0)
 # 9. Mass, dimension properties and MOIs are simplified as defined in rocket_models.py
-
+# 10. Fairing inertial properties not considered
 
 # Environment Parameters
 dt = 1.0                            # seconds
@@ -33,7 +33,7 @@ atmospheric_model = atmospheric_models.US_Standard_Atmosphere()
 vehicle_model = rocket_models.FalconIX()
 
 # Vehicle Parameters
-velocity = [8000.0, 0, 0.0]
+velocity = [5000.0, 0.0, 5000.0]
 coords = [0.0, r_earth+250000.0, 0.0]
 twist = [0.0, 0.0, 0.0]
 # vehicle_quaternion = [0.5, 0.5, 0.5, 0.5] # directly in +Y direction TODO: Convert all rotations to quaternion
@@ -68,12 +68,14 @@ ay_log = []
 az_log = []
 
 mass_log = []
+MOIy_log = []
 
 
 # Determine Orbital Period
 semimajor_axis = (2/np.linalg.norm(coords)-np.linalg.norm(velocity)**2/(G*m_earth))**-1
 orbital_period = 2*np.pi*np.sqrt(semimajor_axis**3/(G*m_earth))
 
+onetimeflag = 1
 # for i in np.linspace(0,orbital_period,int(orbital_period/dt)):
 for i in np.linspace(0,2000,int(2000/dt)):
     dist = np.linalg.norm(coords)
@@ -84,9 +86,9 @@ for i in np.linspace(0,2000,int(2000/dt)):
     pressure,temperature,density = atmospheric_model.get_params(dist)
 
 
-    F_thrust, body_thrust_vector, engine_distance = vehicle_model.getThrustVector(twist, pressure)
+    F_thrust, body_thrust_vector, engine_distance = vehicle_model.getThrustVector(pressure)
     thrust_vector = general_functions.inverseCoordinateTransform(body_thrust_vector, twist) # TODO: Verify This
-    print(thrust_vector,'.....................',body_thrust_vector)
+    # print(thrust_vector,'.....................',body_thrust_vector)
     # Drag Calculations
     air_ground_velocity = np.cross([0,0,thetaDot_earth],[coords[0],coords[1],0])
     air_speed_vector = velocity + air_ground_velocity
@@ -134,17 +136,26 @@ for i in np.linspace(0,2000,int(2000/dt)):
     center_of_pressure = vehicle_model.getCenterofPressure()
 
     Ixx, Iyy, Izz = vehicle_model.getMOIs()
+    if onetimeflag == 0 :
+        print(Iyy)
+        onetimeflag = 1
 
     moments_xx = Fg_rotated[0]*center_of_gravity + Fd_rotated[0]*center_of_pressure + Ft_rotated[0]*engine_distance
     moments_yy = Fg_rotated[1]*center_of_gravity + Fd_rotated[1]*center_of_pressure + Ft_rotated[1]*engine_distance
     moments_zz = Fg_rotated[2]*center_of_gravity + Fd_rotated[2]*center_of_pressure + Ft_rotated[2]*engine_distance
 
-    # Inertial Frame Rotations and Coordinates
     body_twist[0] = moments_xx/Ixx*dt  
     body_twist[1] = moments_yy/Iyy*dt
     body_twist[2] = moments_zz/Izz*dt
+    print(body_twist)
+    # moments = np.cross([0,0,-center_of_gravity],Fg_rotated) + np.cross([0,0,-center_of_pressure],Fd_rotated) + np.cross([0,0,-engine_distance],Ft_rotated)
+    # print(body_twist[0])
+    # # Inertial Frame Rotations and Coordinates
+    # body_twist[0] = moments[0]/Ixx*dt  
+    # body_twist[1] = moments[1]/Iyy*dt
+    # body_twist[2] = moments[2]/Izz*dt
 
-    # twist += general_functions.angleRates_BodytoEuler(body_twist,twist)  # TODO: Verify this, highly suspect
+    twist += general_functions.inverseCoordinateTransform(body_twist,twist)  # TODO: Verify this, highly suspect
 
     coords[0] += velocity[0]*dt 
     coords[1] += velocity[1]*dt 
@@ -177,6 +188,7 @@ for i in np.linspace(0,2000,int(2000/dt)):
     az_log.append(accel_z)
 
     mass_log.append(vehicle_mass)
+    MOIy_log.append(Iyy)
 
 
 # Configure 3-D Plot
@@ -268,4 +280,5 @@ plt.tight_layout()
 
 fig4, ax4 = plt.subplots(nrows = 2, ncols = 1)
 ax4[0].plot(t,mass_log)
+ax4[1].plot(t,MOIy_log)
 plt.show()
