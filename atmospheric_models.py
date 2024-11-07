@@ -21,7 +21,7 @@ class US_Standard_Atmosphere:
         temperature = np.interp(altitude, self.altitudes,self.temperatures_K)
         
         # Finds index using floor method to determine which atmospheric range of the US model to reference for calculations
-        ref_index = bisect.bisect(self.altitudes,altitude) - 1
+        ref_index = bisect.bisect_left(self.altitudes,altitude)-1
         ref_altitude = self.altitudes[ref_index]
         ref_temperature = self.temperatures_K[ref_index]
         ref_pressure = self.pressures_Pa[ref_index]
