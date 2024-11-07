@@ -26,7 +26,7 @@ class OrbitingSatellite:
         Izz = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_width**2 )
         return Ixx, Iyy, Izz
     
-    def getThrustVector(self, pressure, body_frame_quaternion,dt):
+    def getThrustVector(self, pressure, body_frame_quaternion, i, dt):
         return 0.0, [0.0,0.0,0.0], 0.0
     
     def getCenterofPressure(self):
@@ -35,18 +35,18 @@ class OrbitingSatellite:
 class FalconIX:
     def __init__(self):
         self.gimbalAngleMax = 5.0*np.pi/180                                 # rad
-        self.mass_satellite = 5000.0                                        # kg
+        self.mass_satellite = 12000                                         # kg advertised mass to LEO
         self.satellite_length = 0.25                                        # m
         self.satellite_width = 0.25                                         # m
         self.satellite_height = 0.25                                        # m
 
-        self.stage_one_fuselage_mass = 395700+19600                         # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
-        stage_one_liquid_mass = 92670.0                                     # kg
+        self.stage_one_fuselage_mass = 25600 - 470.0 * 9                    # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
+        stage_one_liquid_mass = 395700+19600                                # kg
         self.stage_one_fuel_mass = stage_one_liquid_mass*2.6/3.6            # kg
         self.stage_one_oxidizer_mass = stage_one_liquid_mass*1.0/3.6        # kg
         self.stage_one_motor_mass = 470.0*9                                 # kg - Merlin 1D - https://en.wikipedia.org/wiki/SpaceX_Merlin
         self.stage_two_fuselage_mass = 2900.0 - 470.0                       # kg
-        stage_two_liquid_mass = 25600.0-470.0*9                             # kg
+        stage_two_liquid_mass = 92670                                       # kg
         self.stage_two_fuel_mass = stage_two_liquid_mass*2.6/3.6            # kg
         self.stage_two_oxidizer_mass = stage_two_liquid_mass*1.0/3.6        # kg
         self.stage_two_motor_mass = 470.0                                   # kg
@@ -146,9 +146,6 @@ class FalconIX:
     
     def getMOIs(self):
         # Parallel Axis Theorem: I = I_c + m*d^2
-        # Ixx = 2945907.90    #stolen from Saturn V - only inital conditions
-        # Iyy = 892137606
-        # Izz = 892137606
         Ixx = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_height**2 )
         Iyy = 1/12*self.mass_satellite*(self.satellite_height**2 + self.satellite_width**2 )
         Izz = 1/12*self.mass_satellite*(self.satellite_length**2 + self.satellite_width**2 )
@@ -194,7 +191,7 @@ class FalconIX:
 
         return Ixx, Iyy, Izz
 
-    def getThrustVector(self, air_pressure, body_frame_quaternion,dt):
+    def getThrustVector(self, air_pressure,body_frame_quaternion, i, dt):
         # Thrust Calcs - https://space.stackexchange.com/questions/46521/falcon-9-merlin-1d-thrust-calculated-through-every-moment-of-flight
         if self.stage_flag == 1:
             F_thrust = self.stage_one_fuel_consumption_rate*self.stage_one_exit_velocity+(self.stage_one_exit_pressure-air_pressure)*self.stage_one_exit_area
@@ -207,9 +204,12 @@ class FalconIX:
         
         # TODO: alter fuel mass distributions over duration of flight. Current model assumes homogonous density within tank
         elif self.stage_flag == 2:
-            F_thrust = self.stage_two_fuel_consumption_rate*self.stage_two_exit_velocity+(self.stage_two_exit_pressure-air_pressure)*self.stage_two_exit_area
-            self.stage_two_fuel_mass -= self.stage_two_fuel_consumption_rate*2.66/3.66
-            self.stage_two_oxidizer_mass -= self.stage_two_fuel_consumption_rate*1.00/3.66
+            if i < 585 or i > 5000:
+                F_thrust = self.stage_two_fuel_consumption_rate*self.stage_two_exit_velocity+(self.stage_two_exit_pressure-air_pressure)*self.stage_two_exit_area
+                self.stage_two_fuel_mass -= self.stage_two_fuel_consumption_rate*2.66/3.66
+                self.stage_two_oxidizer_mass -= self.stage_two_fuel_consumption_rate*1.00/3.66
+            else:
+                F_thrust = 0
             motor_distance = self.stage_two_motor_distance
             if self.stage_two_fuel_mass < 0:
                 self.stage_flag = 3
@@ -220,11 +220,18 @@ class FalconIX:
             F_thrust = 0.0
             motor_distance = 0.0
 
-        # neutral_steer_angle = general_functions.inverseCoordinateTransform([1,0,0],twist)
         # TODO: Develop Gimbal Control Method and Control Law (also Trajectories)
-        neutral_steer_angle = [1,0,0]
-        body_to_global_quaternion = [body_frame_quaternion[0],-body_frame_quaternion[1],-body_frame_quaternion[2],-body_frame_quaternion[3]]
-        steer_angle_global = general_functions.vector_quaternion_rotation(neutral_steer_angle,body_to_global_quaternion)
+        if i > 15.00 and i < 17 :
+            pitch_angle = -0.01*np.pi/180
+        elif i > 197 and i < 232:
+            pitch_angle = 0#2*np.pi/180
+        else:
+            pitch_angle = 0
+
+        neutral_steer_vector = [np.cos(pitch_angle),np.sin(pitch_angle),0]
+        neutral_steer_vector_normalization = np.linalg.norm(neutral_steer_vector)
+        neutral_steer_vector = (neutral_steer_vector/neutral_steer_vector_normalization).tolist()
+        steer_angle_global = general_functions.vector_quaternion_rotation(neutral_steer_vector,body_frame_quaternion)
         return F_thrust, steer_angle_global, motor_distance
     
     def getCenterofPressure(self):
@@ -240,5 +247,5 @@ class FalconIX:
         if self.stage_flag in [1,2]:
             mass += self.stage_two_motor_mass + self.stage_two_fuselage_mass + self.stage_two_oxidizer_mass + self.stage_two_fuel_mass
         if self.stage_flag == 1:
-            mass += self.mass_satellite + self.stage_one_motor_mass + self.stage_one_fuselage_mass + self.stage_one_oxidizer_mass + self.stage_one_fuel_mass
+            mass += self.stage_one_motor_mass + self.stage_one_fuselage_mass + self.stage_one_oxidizer_mass + self.stage_one_fuel_mass
         return mass
