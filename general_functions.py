@@ -33,3 +33,16 @@ def quaternion_rotate_by_rate(quaternion,wx,wy,wz,dt):
     
     rotated_quaternion = dt/2 * np.matmul(rotation_update_matrix, quaternion)
     return rotated_quaternion/np.linalg.norm(rotated_quaternion)
+
+def quaternion_to_euler_321(q):
+    roll = np.arctan2((2*q[0]*q[1]+q[2]*q[3]),(1-2*(q[1]**2 + q[2]**2)))
+    pitch = -np.pi/2 + 2*np.arctan2(np.sqrt(1+2*(q[0]*q[2] - q[1]*q[3])),np.sqrt(1-2*(q[0]*q[2] - q[1]*q[3])))
+    yaw = np.arctan2((2*q[0]*q[3]+q[2]*q[1]),(1-2*(q[2]**2 + q[3]**2)))
+    return roll, pitch, yaw
+
+def angle_between_vectors(v1,v2):
+    dot_product = np.dot(v1,v2)
+    n1 = np.linalg.norm(v1)
+    n2 = np.linalg.norm(v2)
+    angle = np.arccos(dot_product/(n1*n2))
+    return angle

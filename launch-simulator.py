@@ -4,21 +4,21 @@ import atmospheric_models
 import rocket_models
 import general_functions
 
-# ---------------------ASSUMPTIONS-------------------- #
-# 1. Earth is a perfect sphere with uniform density (point-mass gravity model)
-# 2. A day is exactly 24 hours
-# 3. The Rocket is radially symmetrical (all force locations on centerline)
-# 4. Negligible wind, all particles of air move in a perfect circle about the earth's axis of rotation each day
-# 5. Center of Pressure is static during each stage
-# 6. Liquid Fuel has no slosh, and drains in the form of a perfect cylinder of decreasing height
-# 7. Ground effect is not considered
-# 8. Lift force is negligible (C_l = 0.0)
-# 9. Mass, dimension properties and MOIs are simplified as defined in rocket_models.py
-# 10. Fairing inertial properties not considered
+'''---------------------ASSUMPTIONS-------------------- #
+    1. Earth is a perfect sphere with uniform density (point-mass gravity model)
+    2. A day is exactly 24 hours
+    3. The Rocket is radially symmetrical (all force locations on centerline)
+    4. Negligible wind, all particles of air move in a perfect circle about the earth's axis of rotation each day
+    5. Center of Pressure is static during each stage
+    6. Liquid Fuel has no slosh, and drains in the form of a perfect cylinder of decreasing height
+    7. Ground effect is not considered
+    8. Lift force is negligible (C_l = 0.0)
+    9. Mass, dimension properties and MOIs are simplified as defined in rocket_models.py
+    10. Fairing inertial properties not considered'''
 
 # Simulation Environment Variables
 dt = 1.0 # Step Time [s]
-simulation_time = 10000 # [s]
+simulation_time = 2500 # [s]
 atmospheric_model = atmospheric_models.US_Standard_Atmosphere()
 vehicle_model = rocket_models.FalconIX()
 
@@ -28,12 +28,12 @@ earth_radius = 6378137                                          # meters
 earth_mass = 5.9722e24                                          # kg
 earth_angular_velocity = 2*np.pi/60/60/24                       # radians/sec earth rotation TODO: Get more accurate value
 
-coordinates = [0.0, earth_radius+1000.0, 0.0]                   # m - note: coordinate convention is x,y,z global, with +z in the direction of global north
+coordinates = [0.0, earth_radius+250.0, 0.0]                   # m - note: coordinate convention is x,y,z global, with +z in the direction of global north
 surface_rotation_rate = np.cross([0,0,earth_angular_velocity],[coordinates[0],coordinates[1],0])
 velocity = [surface_rotation_rate[0], 0.0, 0.0]                 # m/s
 acceleration = [0.0,0.0,0.0]                                    # m/s^2
 vehicle_body_frame_quaternion = [1/np.sqrt(2),0,0,1/np.sqrt(2)] # (w, x, y, z) quaternion convention
-vehicle_body_frame_quaternion = [0.6531,0.27105,0.27105,0.6531] # (w, x, y, z) quaternion convention
+# vehicle_body_frame_quaternion = [0.6531,0.27105,0.27105,0.6531] # (w, x, y, z) quaternion convention
 vehicle_body_frame_rate = [0.0,0.0,0.0]                         # rad/s Tait-Bryan convention
 roll_rate = 0.0
 pitch_rate = 0.0
@@ -65,6 +65,10 @@ velocity_z_log = []
 acceleration_x_log = []
 acceleration_y_log = []
 acceleration_z_log = []
+
+roll_log = []
+pitch_log = []
+yaw_log = []
 
 stage_flag = 0
 
@@ -125,7 +129,6 @@ for i in np.linspace(0,simulation_time,int(simulation_time/dt)):
     rotated_thrust_force = general_functions.vector_quaternion_rotation([thrust_force_x,thrust_force_y,thrust_force_z],global_to_body_quaternion)
     rotated_drag_force = general_functions.vector_quaternion_rotation([drag_force_x,drag_force_y,drag_force_z],global_to_body_quaternion)
     rotated_gravity_force = general_functions.vector_quaternion_rotation([gravity_force_x,gravity_force_y,gravity_force_z],global_to_body_quaternion)
-    # print(rotated_thrust_force)
     # Calculate Moments
     '''Moment distances are considered as positive values, measured as distance from payload (satellite)'''
     center_of_gravity = vehicle_model.getGravityCenter()
@@ -151,11 +154,15 @@ for i in np.linspace(0,simulation_time,int(simulation_time/dt)):
     
     vehicle_body_frame_quaternion = general_functions.quaternion_rotate_by_rate(vehicle_body_frame_quaternion,roll_rate,pitch_rate,yaw_rate,dt)
 
+    roll, pitch, yaw = general_functions.quaternion_to_euler_321(vehicle_body_frame_quaternion)
+
     if stage_flag != vehicle_model.stage_flag:
-        if stage_flag == 1:
+        if stage_flag == 0:
             stage_one_end_coordinates = list(coordinates)
-        else:
+        elif stage_flag == 1:
             stage_two_end_coordinates = list(coordinates)
+        else:
+            continue
         stage_flag = vehicle_model.stage_flag
         print('Stage ', stage_flag, ' commenced at time T+', round(i,3))
 
@@ -186,19 +193,19 @@ for i in np.linspace(0,simulation_time,int(simulation_time/dt)):
     acceleration_y_log.append(acceleration[1])
     acceleration_z_log.append(acceleration[2])
 
-    # print("Thrust:",thrust_force,"\tGravity:",gravitational_force,"\tDrag:",drag_force,"\tMass:",vehicle_mass)
-    # print(free_stream_velocity, distance_to_earth_center-earth_radius)
-
+    roll_log.append(roll)
+    pitch_log.append(pitch)
+    yaw_log.append(yaw)
 
 
 plt.style.use('dark_background')
 ax = plt.figure().subplot_mosaic(
-    [["globe","globe","coordinate_x","velocity_x","acceleration_x"],
-     ["globe","globe","coordinate_y","velocity_y","acceleration_y"],
-     ["globe","globe","coordinate_z","velocity_z","acceleration_z"],
-     ["globe","globe","thrust_x","drag_x","gravity_x"],
-     ["globe","globe","thrust_y","drag_y","gravity_y"],
-     ["globe","globe","thrust_z","drag_z","gravity_z"]],
+    [["globe","globe","globe","coordinate_x","velocity_x","acceleration_x"],
+     ["globe","globe","globe","coordinate_y","velocity_y","acceleration_y"],
+     ["globe","globe","globe","coordinate_z","velocity_z","acceleration_z"],
+     ["globe","globe","globe","thrust_x","drag_x","gravity_x"],
+     ["globe","globe","globe","thrust_y","drag_y","gravity_y"],
+     ["twist_x","twist_y","twist_z","thrust_z","drag_z","gravity_z"]],
      per_subplot_kw={"globe": {"projection": "3d"}}
 )
 # Configure 3-D Plot
@@ -209,8 +216,15 @@ ax["globe"].set_ylim([-frame_limit,frame_limit])
 ax["globe"].set_zlim([-frame_limit,frame_limit])
 ax["globe"].set_box_aspect([1,1,1])
 ax["globe"].plot(coordinate_x_log,coordinate_y_log,coordinate_z_log)
-# ax["globe"].plot(stage_one_end_coordinates[0],stage_one_end_coordinates[1],stage_one_end_coordinates[2],"r",marker = 'o',markersize=1)
-# ax["globe"].plot(stage_two_end_coordinates[0],stage_two_end_coordinates[1],stage_two_end_coordinates[2],"r",marker = 'o',markersize=1)
+try:
+    ax["globe"].plot(stage_one_end_coordinates[0],stage_one_end_coordinates[1],stage_one_end_coordinates[2],"r",marker = 'o',markersize=1)
+except:
+    print("Plotting Error - Stage One not complete during simulation")
+try:
+    ax["globe"].plot(stage_two_end_coordinates[0],stage_two_end_coordinates[1],stage_two_end_coordinates[2],"r",marker = 'o',markersize=1)
+except:
+    print("Plotting Error - Stage Two not complete during simulation")
+
 ax["globe"].set_xlabel('X [m]')
 ax["globe"].set_ylabel('Y [m]')
 ax["globe"].set_zlabel('Z [m]')
@@ -283,8 +297,22 @@ ax["gravity_y"].set_ylabel('$F_{G,Y}$ [N]')
 ax["gravity_z"].plot(t,gravity_force_z_log)
 ax["gravity_z"].set_xlabel('time [s]')
 ax["gravity_z"].set_ylabel('$F_{G,Z}$ [N]')
+ax["twist_x"].plot(t,roll_log)
+ax["twist_x"].set_title('Roll')
+ax["twist_x"].set_xlabel('time [s]')
+ax["twist_x"].set_ylabel('$\\Theta$ [rad]')
+ax["twist_y"].plot(t,pitch_log)
+ax["twist_y"].set_title('Pitch')
+ax["twist_y"].set_xlabel('time [s]')
+ax["twist_y"].set_ylabel('$\\phi$ [rad]')
+ax["twist_z"].plot(t,yaw_log)
+ax["twist_z"].set_title('Yaw')
+ax["twist_z"].set_xlabel('time [s]')
+ax["twist_z"].set_ylabel('$\\psi$ [rad]')
 
 figManager = plt.get_current_fig_manager()
-# figManager.window.showMaximized()
+figManager.window.showMaximized()
 plt.subplots_adjust(wspace=0.5,hspace=1.25)
+# plt.margins(tight=True)
+plt.subplots_adjust(left = 0.05)
 plt.show()

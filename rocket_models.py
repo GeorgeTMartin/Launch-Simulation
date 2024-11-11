@@ -221,14 +221,14 @@ class FalconIX:
             motor_distance = 0.0
 
         # TODO: Develop Gimbal Control Method and Control Law (also Trajectories)
-        if i > 15.00 and i < 17 :
-            pitch_angle = -0.01*np.pi/180
+        if i > 15.00 and i < 16.0 :
+            pitch_angle = 0.2*np.pi/180
         elif i > 197 and i < 232:
-            pitch_angle = 0#2*np.pi/180
+            pitch_angle = -0*np.pi/180
         else:
             pitch_angle = 0
 
-        neutral_steer_vector = [np.cos(pitch_angle),np.sin(pitch_angle),0]
+        neutral_steer_vector = [np.cos(pitch_angle),-np.sin(pitch_angle),0]
         neutral_steer_vector_normalization = np.linalg.norm(neutral_steer_vector)
         neutral_steer_vector = (neutral_steer_vector/neutral_steer_vector_normalization).tolist()
         steer_angle_global = general_functions.vector_quaternion_rotation(neutral_steer_vector,body_frame_quaternion)
