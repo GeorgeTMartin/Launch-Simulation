@@ -46,3 +46,9 @@ def angle_between_vectors(v1,v2):
     n2 = np.linalg.norm(v2)
     angle = np.arccos(dot_product/(n1*n2))
     return angle
+
+def rpy_to_vector(p,y):
+    x = np.cos(y)*np.cos(p)
+    y = np.sin(y)*np.cos(p)
+    z = np.sin(p)
+    return [x,y,z]

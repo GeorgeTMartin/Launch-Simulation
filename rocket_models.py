@@ -41,14 +41,14 @@ class FalconIX:
         self.satellite_height = 0.25                                        # m
 
         self.stage_one_fuselage_mass = 25600 - 470.0 * 9                    # kg - https://www.researchgate.net/publication/363319640_AAS_22-821_AMBIGUITY_REMEDIATION_IN_SPACE_LAUNCH_VEHICLES_WITH_PARAMETER_UNCERTAINTIES_A_COMPARISON_BETWEEN_SPECIAL_EUCLIDEAN_GROUP_AND_DUAL_QUATERNIONS
-        stage_one_liquid_mass = 395700+19600                                # kg
-        self.stage_one_fuel_mass = stage_one_liquid_mass*2.6/3.6            # kg
-        self.stage_one_oxidizer_mass = stage_one_liquid_mass*1.0/3.6        # kg
+        self.stage_one_liquid_mass = 395700+19600                           # kg
+        self.stage_one_fuel_mass = self.stage_one_liquid_mass*2.6/3.6       # kg
+        self.stage_one_oxidizer_mass = self.stage_one_liquid_mass*1.0/3.6   # kg
         self.stage_one_motor_mass = 470.0*9                                 # kg - Merlin 1D - https://en.wikipedia.org/wiki/SpaceX_Merlin
         self.stage_two_fuselage_mass = 2900.0 - 470.0                       # kg
-        stage_two_liquid_mass = 92670                                       # kg
-        self.stage_two_fuel_mass = stage_two_liquid_mass*2.6/3.6            # kg
-        self.stage_two_oxidizer_mass = stage_two_liquid_mass*1.0/3.6        # kg
+        self.stage_two_liquid_mass = 92670.0                                # kg
+        self.stage_two_fuel_mass = self.stage_two_liquid_mass*2.6/3.6       # kg
+        self.stage_two_oxidizer_mass = self.stage_two_liquid_mass*1.0/3.6   # kg
         self.stage_two_motor_mass = 470.0                                   # kg
 
         self.stage_one_exit_velocity = 3000.0                               # m/s   9 Merlin 1D Motors
@@ -82,9 +82,9 @@ class FalconIX:
 
         self.cross_section_area = np.pi*5.2**2                              # m^2
         self.rocket_outer_radius = 3.65/2                                   # m
-        stage_one_mass = self.stage_one_fuselage_mass+stage_one_liquid_mass+self.stage_one_motor_mass
-        stage_two_mass = self.stage_two_fuselage_mass+stage_two_liquid_mass+self.stage_two_motor_mass
-        self.total_mass = self.mass_satellite+stage_one_mass+stage_two_mass
+        self.stage_one_mass = self.stage_one_fuselage_mass+self.stage_one_liquid_mass+self.stage_one_motor_mass
+        self.stage_two_mass = self.stage_two_fuselage_mass+self.stage_two_liquid_mass+self.stage_two_motor_mass
+        self.total_mass = self.mass_satellite+self.stage_one_mass+self.stage_two_mass
 
         # Assumption - fuselage mass is uniform cylinder of outer shell radius as listed, 
         aluminum_lithium_alloy_density = 2700.0                             # kg/m^3 - https://www.wixsteel.com/products/aluminum-alloy/2000-series-aluminum-alloy/2198
@@ -222,9 +222,9 @@ class FalconIX:
 
         # TODO: Develop Gimbal Control Method and Control Law (also Trajectories)
         if i > 15.00 and i < 16.0 :
-            pitch_angle = 0.2*np.pi/180
+            pitch_angle = 0.01*np.pi/180
         elif i > 197 and i < 232:
-            pitch_angle = -0*np.pi/180
+            pitch_angle = 0.0*np.pi/180
         else:
             pitch_angle = 0
 
@@ -249,3 +249,11 @@ class FalconIX:
         if self.stage_flag == 1:
             mass += self.stage_one_motor_mass + self.stage_one_fuselage_mass + self.stage_one_oxidizer_mass + self.stage_one_fuel_mass
         return mass
+    
+if __name__ == '__main__':
+    RocketModel = FalconIX()
+    print('Stage One Liquid Mass:',RocketModel.stage_one_liquid_mass,'kg')
+    print('Stage One Solid Mass:',RocketModel.stage_one_mass-RocketModel.stage_one_liquid_mass,'kg')
+    print('Stage Two Liquid Mass:',RocketModel.stage_two_liquid_mass,'kg')
+    print('Stage Two Solid Mass:',RocketModel.stage_two_mass-RocketModel.stage_two_liquid_mass,'kg')
+    print('Satellite Mass:',RocketModel.mass_satellite)

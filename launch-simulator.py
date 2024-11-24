@@ -18,7 +18,7 @@ import general_functions
 
 # Simulation Environment Variables
 dt = 1.0 # Step Time [s]
-simulation_time = 2500 # [s]
+simulation_time = 5500 # [s]
 atmospheric_model = atmospheric_models.US_Standard_Atmosphere()
 vehicle_model = rocket_models.FalconIX()
 
@@ -69,6 +69,8 @@ acceleration_z_log = []
 roll_log = []
 pitch_log = []
 yaw_log = []
+
+ground_pitch_log = []
 
 stage_flag = 0
 
@@ -156,13 +158,17 @@ for i in np.linspace(0,simulation_time,int(simulation_time/dt)):
 
     roll, pitch, yaw = general_functions.quaternion_to_euler_321(vehicle_body_frame_quaternion)
 
+    rocket_direction_vector = general_functions.rpy_to_vector(pitch,yaw)
+    ground_pitch = general_functions.angle_between_vectors(-gravity_vector,rocket_direction_vector)
+    ground_pitch_log.append(ground_pitch)
+
     if stage_flag != vehicle_model.stage_flag:
-        if stage_flag == 0:
+        if stage_flag == 1:
             stage_one_end_coordinates = list(coordinates)
-        elif stage_flag == 1:
+        elif stage_flag == 2:
             stage_two_end_coordinates = list(coordinates)
         else:
-            continue
+            pass
         stage_flag = vehicle_model.stage_flag
         print('Stage ', stage_flag, ' commenced at time T+', round(i,3))
 
@@ -315,4 +321,8 @@ figManager.window.showMaximized()
 plt.subplots_adjust(wspace=0.5,hspace=1.25)
 # plt.margins(tight=True)
 plt.subplots_adjust(left = 0.05)
+# plt.show()
+
+ax2 = plt.figure()
+plt.plot(t,ground_pitch_log)
 plt.show()
