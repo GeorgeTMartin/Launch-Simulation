@@ -39,12 +39,10 @@ def acados_generator(rebuild_flag):
     nsh = 1
 
     # set costs
-    Q = np.diag([0,1e1, 0, 1e1, 0, 0])      #Should be of Size = nx
-
-    R = np.eye(nu)
-    R[0, 0] = 0                        #Should be of Size = nu 
-
-    Qe = np.diag([0, 1e1, 0, 1e1, 0, 0])     #Should be of Size = nx
+    Q = np.diag([0, 0, 0, 0, 0])      # Should be of Size = nx
+    R = np.eye(nu)                    # Should be of Size = nu 
+    R[0, 0] = 0                       # Should be of Size = nu 
+    Qe = np.diag([0, 1e1, 0, 1e1, 0]) # Should be of Size = nx
 
     ocp.cost.cost_type = "LINEAR_LS"
     ocp.cost.cost_type_e = "LINEAR_LS"
@@ -58,7 +56,7 @@ def acados_generator(rebuild_flag):
     ocp.cost.Vx = Vx
 
     Vu = np.zeros((ny, nu))
-    Vu[5, 0] = 0.0
+    Vu[5, 0] = 0.1
     ocp.cost.Vu = Vu
 
     Vx_e = np.zeros((ny_e, nx))
@@ -71,29 +69,16 @@ def acados_generator(rebuild_flag):
     ocp.cost.Zu = 0.1 * np.ones((ns,))
 
     # set initial references
-    ocp.cost.yref = np.array([0, 1e1, 1e1, 0, 0, 0, 0])       # Size: nx + nu
-    ocp.cost.yref_e = np.array([0, 1e1, 0, 1e1, 0, 0])        # Size: nx 
+    ocp.cost.yref = np.array([0, 0, 0, 0, 0, 0])       # Size: nx + nu
+    ocp.cost.yref_e = np.array([0, 1e1, 0, 1e1, 0])        # Size: nx 
 
     # setting constraints
-    ocp.constraints.lbx = np.array([])
-    ocp.constraints.ubx = np.array([])
-    ocp.constraints.idxbx = np.array([])
-    ocp.constraints.lbu = np.array([model.theta_dot_min])
-    ocp.constraints.ubu = np.array([model.theta_dot_min])
+    ocp.constraints.lbu = np.array([model.theta_min])
+    ocp.constraints.ubu = np.array([model.theta_max])
     ocp.constraints.idxbu = np.array([0])
-    # ocp.constraints.lsbx=np.zeros([1])
-    # ocp.constraints.usbx=np.zeros([1])
-    # ocp.constraints.idxsbx=np.array([1])
-    ocp.constraints.lh = np.array(
-        [
-            model.theta_dot_min,
-        ]
-    )
-    ocp.constraints.uh = np.array(
-        [
-            model.theta_dot_max,
-        ]
-    )
+
+    ocp.constraints.lh = np.array([model.theta_min])
+    ocp.constraints.uh = np.array([model.theta_max])
     ocp.constraints.lsh = np.zeros(nsh)
     ocp.constraints.ush = np.ones(nsh)*0.01
     ocp.constraints.idxsh = np.array([0])
@@ -106,11 +91,11 @@ def acados_generator(rebuild_flag):
     ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
     # ocp.solver_options.qp_solver = "PARTIAL_CONDENSING_HPIPM"
     # ocp.solver_options.nlp_solver_type = "SQP_RTI"
-    ocp.solver_options.nlp_solver_max_iter = 10
+    ocp.solver_options.nlp_solver_max_iter = 5
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
     ocp.solver_options.integrator_type = "ERK"
-    ocp.solver_options.sim_method_num_stages = 3
-    ocp.solver_options.sim_method_num_steps = 2
+    ocp.solver_options.sim_method_num_stages = 4
+    ocp.solver_options.sim_method_num_steps = 1
 
 
     ocp.solver_options.qp_solver_tol_stat = 1e-2

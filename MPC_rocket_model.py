@@ -22,7 +22,7 @@ def rocket_model():
     model = types.SimpleNamespace()
 
     model_name = "FalconIX"
-    ## Race car parameters
+    ## Rocket parameters - very simplified
     m_s1_solid = 25600.0    # kg
     m_s1_liquid = 415300.0  # kg
     m_s2_solid = 2900.0     # kg
@@ -52,10 +52,10 @@ def rocket_model():
     times[4] = t2
     times[5] = t2+1000        # Making arbitrary range of const mass
     rocket_thrust_equation = SX.sym('rocket_mass',6)
-    rocket_thrust_equation[0] = -m_dot*exit_velocity/(9.8*stage_one_mass_function)
-    rocket_thrust_equation[1] = -m_dot*exit_velocity/(9.8*stage_one_mass_function)
-    rocket_thrust_equation[2] = -m_dot*exit_velocity/(9.8*stage_two_mass_function)
-    rocket_thrust_equation[3] = -m_dot*exit_velocity/(9.8*stage_two_mass_function)
+    rocket_thrust_equation[0] = -m_dot*exit_velocity/(stage_one_mass_function)
+    rocket_thrust_equation[1] = -m_dot*exit_velocity/(stage_one_mass_function)
+    rocket_thrust_equation[2] = -m_dot*exit_velocity/(stage_two_mass_function)
+    rocket_thrust_equation[3] = -m_dot*exit_velocity/(stage_two_mass_function)
     rocket_thrust_equation[4] = SX(0)
     rocket_thrust_equation[5] = SX(0)
 
@@ -69,18 +69,17 @@ def rocket_model():
     x_dot = SX.sym("x_dot")
     y_dot = SX.sym("y_dot")
     theta = SX.sym("theta")
-    theta_dot = SX.sym("theta_dot")
 
-    states = vertcat(x, y, x_dot, y_dot, theta, t)
+    states = vertcat(x, y, x_dot, y_dot, t)
 
     # controls
-    u = vertcat(theta_dot)
+    u = vertcat(theta)
 
     # State Derivatives
     x_d_dot = SX.sym("x_d_dot")
     y_d_dot = SX.sym("y_d_dot")
     t_dot = SX.sym("t_dot")
-    states_dot = vertcat(x_dot, y_dot, x_d_dot, y_d_dot, theta_dot, t_dot)
+    states_dot = vertcat(x_dot, y_dot, x_d_dot, y_d_dot, t_dot)
 
     # algebraic variables
     z = vertcat([])
@@ -89,11 +88,7 @@ def rocket_model():
     p = vertcat([])
 
     # dynamics
-    Ispm = exit_velocity/9.8
-    # thrust_acceleration = Function('thrust',[t],[])
-    g = G*earth_mass/(y+earth_radius)**2
-    # x_accel_function = Function('rocket_thrust_x',[t,theta],[rocket_thrust_equation*np.cos(theta)]) 
-    # y_accel_function = Function('rocket_thrust_y',[t,theta,y],[rocket_thrust_equation*np.sin(theta)-g])  
+    g = G*earth_mass/(y+earth_radius)**2 
 
     # Explicit Dynamics [x_dot = f(x,u)]
     f_expl = vertcat(
@@ -101,27 +96,21 @@ def rocket_model():
         y_dot,                                                  # Y_dot
         pw_lin(t,times,rocket_thrust_equation)*np.cos(theta),   # x_d_dot
         pw_lin(t,times,rocket_thrust_equation)*np.sin(theta)-g, # y_d_dot
-        theta_dot,                                              # theta_dot
         1                                                       # t_dot [s/s]
     )
 
-
     # state bounds
-    model.theta_min = 0.0  # minimum pitch angle [rad]
-    model.theta_max = np.pi/2  # maximum pitch angle [rad]
-    model.theta_dot_min = -0.1 # rad/s
-    model.theta_dot_max = 0.1  # rad/s
+    model.theta_min = 0.0       # minimum pitch angle [rad]
+    model.theta_max = np.pi/2   # maximum pitch angle [rad]
 
     # Define initial conditions
-    model.x0 = np.array([0, 0, 0, 0, np.pi/2, 0])
+    model.x0 = np.array([0, 0, 0, 0, 0])
 
     # define constraints struct
     constraint.expr = vertcat(theta)
 
     # Define model struct
     params = types.SimpleNamespace()
-    params.m  = rocket_thrust_equation
-    params.x_dot = x_dot
     model.f_impl_expr = states_dot - f_expl
     model.f_expl_expr = f_expl
     model.x = states
